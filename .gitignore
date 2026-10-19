@@ -1,0 +1,7 @@
+node_modules/
+frontend/dist/
+backend/**/bin/
+backend/**/obj/
+backend/VmmFacility.Api/wwwroot/
+.DS_Store
+*.tsbuildinfo
