@@ -25,6 +25,14 @@ export interface Session {
   userName: string | null;
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/** One line of the /api/chat NDJSON stream. */
+type ChatEvent = { type: "delta"; text: string } | { type: "done" } | { type: "error"; message: string };
+
 export type FieldErrors = Record<string, string>;
 
 export class ApiError extends Error {
@@ -44,11 +52,12 @@ export function setUnauthorizedHandler(handler: () => void) {
   onUnauthorized = handler;
 }
 
-async function send(method: string, url: string, body?: unknown): Promise<Response> {
+async function send(method: string, url: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(url, {
       method,
+      signal,
       credentials: "same-origin",
       headers: {
         "X-VMM-Request": "1",
@@ -56,7 +65,8 @@ async function send(method: string, url: string, body?: unknown): Promise<Respon
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch {
+  } catch (err) {
+    if (signal?.aborted) throw err;
     throw new ApiError("The app server isn't responding. Check that the app is still running, then try again.", 0);
   }
 
@@ -97,6 +107,35 @@ export const api = {
   getExpense: (id: number) => json<Expense>("GET", `/api/expenses/${id}`),
   createExpense: (input: ExpenseInput) => json<Expense>("POST", "/api/expenses", input),
   updateExpense: (id: number, input: ExpenseInput) => json<Expense>("PUT", `/api/expenses/${id}`, input),
+
+  /** Sends the conversation to the local assistant and calls onText with each piece of the reply as it arrives. */
+  async streamChat(messages: ChatMessage[], onText: (text: string) => void, signal: AbortSignal) {
+    const response = await send("POST", "/api/chat", { messages }, signal);
+    const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    for (;;) {
+      let chunk: ReadableStreamReadResult<string>;
+      try {
+        chunk = await reader.read();
+      } catch (err) {
+        if (signal.aborted) throw err;
+        throw new ApiError("The connection to the app server was lost before the reply finished.", 0);
+      }
+      if (chunk.done) break;
+      buffer += chunk.value;
+      let newline: number;
+      while ((newline = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        if (!line) continue;
+        const event = JSON.parse(line) as ChatEvent;
+        if (event.type === "delta") onText(event.text);
+        else if (event.type === "error") throw new ApiError(event.message, 502);
+        else return;
+      }
+    }
+    throw new ApiError("The reply ended unexpectedly. Try again.", 0);
+  },
 
   /** Fetches the PDF and hands it to the browser's normal download behaviour. */
   async downloadReport() {

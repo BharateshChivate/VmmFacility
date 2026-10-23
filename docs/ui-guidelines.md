@@ -109,6 +109,15 @@ Use these as the initial shared tokens. Define them once as CSS variables or the
 - Page title **Expenses**; primary action **Add expense**; secondary action **Export PDF**.
 - Show a simple ledger with newest expenses first and an empty state for a new database.
 - Do not add charts, KPI cards, filters, receipt indicators, budget tools, or extra modules to this MVP.
+- The **Assistant** chat is the only addition. It's a popup anchored to the bottom-right corner (see below), not a section in the page flow.
+
+### Assistant chat popup
+
+- A primary **Assistant** button sits fixed in the bottom-right corner of the Expenses page. It opens a popup panel in the same corner. That panel is the only floating surface in the app and the only element that uses `--shadow-popup`.
+- Panel header: **Assistant** section title, plus quiet text actions **New chat** and **Close**. Escape also closes it. Closing keeps the conversation; **New chat** clears it.
+- Messages are labelled **You** and **Assistant** in muted meta text. User messages sit on the right on a subtle page-colored background. Assistant replies are plain text on the left. Do not add avatars or icons.
+- Show **Replying…** beside the assistant label and on the disabled **Send** button while a reply streams in. Show errors in a shared error notice above the input, and keep the conversation visible.
+- The input has a visible **Your question** label. Enter sends and Shift+Enter adds a new line.
 
 ### Add/Edit expense page
 

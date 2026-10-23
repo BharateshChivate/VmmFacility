@@ -51,6 +51,19 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
+builder.Services.AddHttpClient(Chat.OllamaClient, c =>
+    {
+        c.BaseAddress = new Uri(Chat.OllamaBaseUrl);
+        c.Timeout = Timeout.InfiniteTimeSpan; // replies stream for as long as the model writes; the browser can cancel
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(5) });
+
+// Policy documents the chat can search: VMM_POLICY_DIR, or docs/policies in the repository.
+var policyDir = Environment.GetEnvironmentVariable("VMM_POLICY_DIR") is { Length: > 0 } dir
+    ? Path.GetFullPath(dir)
+    : Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "docs", "policies"));
+builder.Services.AddSingleton(sp => new PolicySearch(
+    sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<PolicySearch>>(), policyDir));
 
 var app = builder.Build();
 
@@ -60,6 +73,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Logger.LogInformation("SQLite database: {DbPath}", dbPath);
+app.Logger.LogInformation("Policy documents: {PolicyDir}", policyDir);
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -219,6 +233,10 @@ expenses.MapGet("/report.pdf", async (AppDbContext db) =>
     var pdf = ExpenseReport.Generate(list, now);
     return Results.File(pdf, "application/pdf", $"VMM-Expense-Report-{now:yyyy-MM-dd}.pdf");
 });
+
+// ---- Chat (local Ollama; nothing is stored) ----
+
+app.MapChat();
 
 // Unknown API routes return 404; everything else falls back to the React app.
 app.Map("/api/{**rest}", () => Results.NotFound());

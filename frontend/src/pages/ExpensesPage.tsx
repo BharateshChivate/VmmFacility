@@ -3,6 +3,7 @@ import { api, ApiError, type Expense } from "../api";
 import { formatDate, formatInr } from "../format";
 import { consumeFlash, Link } from "../router";
 import { Button, ButtonLink, Notice, PageHeader, StatusBadge, type NoticeTone } from "../components/ui";
+import { ChatPanel } from "../components/ChatPanel";
 
 export function ExpensesPage({ flash }: { flash?: string }) {
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
@@ -106,6 +107,8 @@ export function ExpensesPage({ flash }: { flash?: string }) {
           </table>
         </div>
       )}
+
+      <ChatPanel />
     </>
   );
 }

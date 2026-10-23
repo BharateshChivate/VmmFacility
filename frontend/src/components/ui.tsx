@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import { Link } from "../router";
 import type { PaymentState } from "../api";
 
@@ -31,7 +31,7 @@ export function Button({
   className = "",
   type = "button",
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; ref?: Ref<HTMLButtonElement> }) {
   return <button type={type} className={`button button--${variant} ${className}`} {...rest} />;
 }
 
